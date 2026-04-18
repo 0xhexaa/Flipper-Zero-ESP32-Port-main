@@ -1,0 +1,17 @@
+App(
+    appid="clock_settings",
+    name="Date & time",
+    apptype=FlipperAppType.SETTINGS,
+    entry_point="clock_settings",
+    requires=["gui", "notification"],
+    provides=["clock_settings_start"],
+    stack_size=2 * 1024,
+    order=45,
+)
+
+App(
+    appid="clock_settings_start",
+    apptype=FlipperAppType.STARTUP,
+    entry_point="clock_settings_start",
+    order=1000,
+)

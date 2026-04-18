@@ -1,0 +1,19 @@
+#pragma once
+#include <furi.h>
+#include <storage/storage.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MAINMENU_APPS_PATH INT_PATH(".mainmenu_apps.txt")
+
+typedef struct LoaderMenu LoaderMenu;
+
+LoaderMenu* loader_menu_alloc(void (*closed_cb)(void*), void* context);
+
+void loader_menu_free(LoaderMenu* loader_menu);
+
+#ifdef __cplusplus
+}
+#endif
