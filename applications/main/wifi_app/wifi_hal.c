@@ -87,6 +87,9 @@ static volatile bool s_beacon_active = false;
 static uint32_t s_beacon_frames = 0;
 static TaskHandle_t s_beacon_task = NULL;
 
+// Static buffer for passing parameters to beacon task (9 uint32_t slots)
+static uint32_t s_beacon_params[9];
+
 static const uint8_t beacon_packet_template[] = {
     0x80, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -113,10 +116,21 @@ static const char* funny_ssids[] = {
 };
 
 static const char* rickroll_ssids[] = {
-    "Never gonna give you up", "Never gonna let you down",
-    "Never gonna run around", "And desert you",
-    "Never gonna make you cry", "Never gonna say goodbye",
-    "Never gonna tell a lie", "And hurt you", NULL
+    "01 Never gonna give you up",
+    "02 Never gonna let you down",
+    "03 Never gonna run around",
+    "04 And desert you",
+    "05 Never gonna make you cry",
+    "06 Never gonna say goodbye",
+    "07 Never gonna tell a lie",
+    "08 And hurt you",
+    "09 We’ve known each other for so long",
+    "10 Your heart’s been aching, you know it",
+    "11 Inside we both know what’s going on",
+    "12 We understand the game",
+    "13 Gonna stick together forever",
+    "14 Not gonna break your trust",
+    NULL
 };
 
 static uint8_t channels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
@@ -188,11 +202,14 @@ static void prepare_beacon_packet(uint8_t* packet, const uint8_t* mac, const cha
 }
 
 static void beacon_spam_task(void* param) {
-    WifiHalBeaconMode mode = (WifiHalBeaconMode)(uint32_t)param;
+    uint32_t* p = (uint32_t*)param;
+    WifiHalBeaconMode mode = (WifiHalBeaconMode)p[0];
     char base_ssid[33] = {0};
     if(mode == WifiHalBeaconModeCustom) {
-        strncpy(base_ssid, (char*)param + sizeof(uint32_t), 32);
+        memcpy(base_ssid, &p[1], 32);
     }
+    
+    ESP_LOGI(TAG, "Beacon task started with mode=%d", mode);
     
     const char** ssid_list = NULL;
     char random_ssid[64];
@@ -202,6 +219,7 @@ static void beacon_spam_task(void* param) {
     int counter = 1;
     
     srand(time(NULL));
+    
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_start();
     esp_wifi_set_promiscuous(true);
@@ -226,10 +244,16 @@ static void beacon_spam_task(void* param) {
                 current_ssid = random_ssid;
                 break;
             case WifiHalBeaconModeCustom:
-                snprintf(random_ssid, sizeof(random_ssid), "%s%d", base_ssid, counter++);
-                random_ssid[sizeof(random_ssid) - 1] = '\0';
+                if(base_ssid[0] != '\0') {
+                    snprintf(random_ssid, sizeof(random_ssid), "%s%d", base_ssid, counter++);
+                    if(counter > 9999) counter = 1;
+                } else {
+                    snprintf(random_ssid, sizeof(random_ssid), "SSID_%d", rand() % 9999);
+                }
                 current_ssid = random_ssid;
-                if(counter > 9999) counter = 1;
+                break;
+            default:
+                current_ssid = "Default";
                 break;
         }
         
@@ -240,9 +264,12 @@ static void beacon_spam_task(void* param) {
         mac[0] = (mac[0] & 0xFE) | 0x02;
         
         prepare_beacon_packet(packet, mac, current_ssid, channels[channel_idx]);
+        
+        esp_wifi_80211_tx(WIFI_IF_STA, packet, sizeof(beacon_packet_template), false);
+        vTaskDelay(1);
         esp_wifi_80211_tx(WIFI_IF_STA, packet, sizeof(beacon_packet_template), false);
         
-        s_beacon_frames++;
+        s_beacon_frames += 2;
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     
@@ -392,13 +419,12 @@ static void wifi_worker_fn(void* arg) {
             s_beacon_active = true;
             s_beacon_frames = 0;
             
-            uint32_t param_buf[9] = {0};
-            param_buf[0] = (uint32_t)cmd.beacon_start.mode;
+            s_beacon_params[0] = (uint32_t)cmd.beacon_start.mode;
             if(cmd.beacon_start.mode == WifiHalBeaconModeCustom) {
-                memcpy(&param_buf[1], cmd.beacon_start.base_ssid, 32);
+                memcpy(&s_beacon_params[1], cmd.beacon_start.base_ssid, 32);
             }
             
-            xTaskCreate(beacon_spam_task, "BeaconSpam", 4096, param_buf, 5, &s_beacon_task);
+            xTaskCreate(beacon_spam_task, "BeaconSpam", 4096, s_beacon_params, 5, &s_beacon_task);
             break;
             
         case WCMD_BEACON_SPAM_STOP:
@@ -599,7 +625,12 @@ void wifi_hal_cleanup_keep_connection(void) {
 }
 
 void wifi_hal_beacon_spam_start(WifiHalBeaconMode mode, const char* base_ssid) {
-    if(!s_wifi_started) return;
+    ESP_LOGI(TAG, "beacon_spam_start called, mode=%d, wifi_started=%d", mode, s_wifi_started);
+    
+    if(!s_wifi_started) {
+        ESP_LOGE(TAG, "WiFi not started, cannot spam");
+        return;
+    }
     
     WifiCmd cmd = {.type = WCMD_BEACON_SPAM_START};
     cmd.beacon_start.mode = mode;

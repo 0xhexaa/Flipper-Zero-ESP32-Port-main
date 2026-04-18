@@ -4,8 +4,18 @@
 
 void wifi_app_scene_beacon_spam_on_enter(void* context) {
     WifiApp* app = context;
+    
+    // Make sure WiFi is started
+    if(!wifi_hal_is_started()) {
+        wifi_hal_start();
+    }
+    
+    // Start beacon spam
     wifi_hal_beacon_spam_start((WifiHalBeaconMode)app->beacon_mode, app->single_ssid);
+    
+    // Update view
     beacon_view_set_status(app->beacon_view_obj, "Spamming...");
+    beacon_view_set_frame_count(app->beacon_view_obj, 0);
     view_dispatcher_switch_to_view(app->view_dispatcher, WifiAppViewBeacon);
 }
 
@@ -22,6 +32,7 @@ bool wifi_app_scene_beacon_spam_on_event(void* context, SceneManagerEvent event)
     } else if(event.type == SceneManagerEventTypeTick) {
         if(wifi_hal_beacon_spam_is_running()) {
             beacon_view_set_frame_count(app->beacon_view_obj, wifi_hal_beacon_spam_get_frame_count());
+            beacon_view_set_status(app->beacon_view_obj, "Spamming...");
         } else {
             beacon_view_set_status(app->beacon_view_obj, "Stopped");
         }
