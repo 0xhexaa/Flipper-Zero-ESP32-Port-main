@@ -592,6 +592,7 @@ add_library(esp32_fam_app_wifi OBJECT
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_airsnitch_scan.c"
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_ap_detail.c"
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_channel_attack_menu.c"
+    "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_spam_ssids_menu.c"
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_connect.c"
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_crawler.c"
     "C:/Users/U_Know_69/Downloads/Flipper-Zero-ESP32-Port-main/Flipper-Zero-ESP32-Port-main/applications/main/wifi_app/scenes/scene_crawler_input.c"
